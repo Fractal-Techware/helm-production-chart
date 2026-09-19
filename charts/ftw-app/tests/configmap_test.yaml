@@ -1,0 +1,31 @@
+suite: ftw-app configmap
+templates:
+  - templates/configmap.yaml
+release:
+  name: demo
+  namespace: apps
+capabilities:
+  majorVersion: 1
+  minorVersion: 35
+tests:
+  - it: renders config data as strings
+    set:
+      config.data:
+        LOG_LEVEL: info
+        WORKERS: 4
+        DEBUG: false
+    asserts:
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: data
+          value:
+            LOG_LEVEL: info
+            WORKERS: "4"
+            DEBUG: "false"
+  - it: renders nothing when disabled
+    set:
+      config.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

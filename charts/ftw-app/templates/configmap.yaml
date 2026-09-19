@@ -1,0 +1,10 @@
+{{- if .Values.config.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  {{- include "ftw-app.metadata" . | nindent 2 }}
+data:
+  {{- range $k, $v := .Values.config.data }}
+  {{ $k }}: {{ $v | toString | quote }}
+  {{- end }}
+{{- end }}

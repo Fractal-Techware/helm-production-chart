@@ -1,0 +1,25 @@
+suite: ftw-app notes
+templates:
+  - templates/NOTES.txt
+release:
+  name: demo
+  namespace: apps
+capabilities:
+  majorVersion: 1
+  minorVersion: 35
+tests:
+  - it: prints rollout and port-forward instructions
+    asserts:
+      - matchRegexRaw:
+          pattern: rollout status deployment/demo-ftw-app
+      - matchRegexRaw:
+          pattern: port-forward service/demo-ftw-app
+  - it: warns when the image is not pinned and replicas < 2
+    set:
+      image.digest: ""
+      replicaCount: 1
+    asserts:
+      - matchRegexRaw:
+          pattern: "WARNING: image.digest is empty"
+      - matchRegexRaw:
+          pattern: "WARNING: replicaCount is 1"

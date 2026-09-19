@@ -1,0 +1,28 @@
+{{ include "ftw-app.fullname" . }} {{ include "ftw-app.version" . }} is deployed to namespace {{ .Release.Namespace }}.
+
+Check the rollout:
+  kubectl -n {{ .Release.Namespace }} rollout status deployment/{{ include "ftw-app.fullname" . }}
+{{- if .Values.ingress.enabled }}
+
+Ingress hosts:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ (first .paths).path }}
+{{- end }}
+{{- else }}
+
+Reach it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward service/{{ include "ftw-app.fullname" . }} 8080:{{ .Values.service.port }}
+  curl http://127.0.0.1:8080/
+{{- end }}
+
+Security defaults: non-root UID {{ .Values.podSecurityContext.runAsUser }}, read-only root filesystem
+{{- if .Values.tmpVolume.enabled }} (writable {{ .Values.tmpVolume.mountPath }}){{ end }}, all capabilities dropped,
+seccomp RuntimeDefault, no service account token. Compatible with Pod Security "restricted".
+{{- if not .Values.image.digest }}
+
+WARNING: image.digest is empty. Pin the image by digest for reproducible rollouts.
+{{- end }}
+{{- if lt (int .Values.replicaCount) 2 }}
+
+WARNING: replicaCount is {{ .Values.replicaCount }}. Node drains and rollouts will cause downtime.
+{{- end }}

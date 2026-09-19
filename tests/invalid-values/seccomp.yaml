@@ -1,0 +1,4 @@
+# expect: /podSecurityContext/seccompProfile/type
+podSecurityContext:
+  seccompProfile:
+    type: Default

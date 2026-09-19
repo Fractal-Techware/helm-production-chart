@@ -1,0 +1,22 @@
+apiVersion: v2
+name: ftw-app
+description: >-
+  Production-ready Helm chart for a stateless HTTP service: secure pod defaults, probes,
+  resources, config rollout checksums, optional Ingress and a strict values schema.
+type: application
+version: 1.0.0
+appVersion: "1.30.5"
+kubeVersion: ">=1.32.0-0"
+home: https://fractaltechware.com
+sources:
+  - https://github.com/Fractal-Techware/helm-production-chart
+keywords:
+  - http
+  - web
+  - production
+  - secure-defaults
+maintainers:
+  - name: Fractal Techware SRL
+    url: https://fractaltechware.com
+annotations:
+  ftw.io/kit: helm-production-chart

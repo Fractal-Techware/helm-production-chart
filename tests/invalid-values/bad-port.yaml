@@ -1,0 +1,2 @@
+# expect: /containerPort
+containerPort: 70000

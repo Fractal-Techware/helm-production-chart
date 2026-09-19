@@ -1,0 +1,316 @@
+suite: ftw-app deployment
+templates:
+  - templates/deployment.yaml
+release:
+  name: demo
+  namespace: apps
+capabilities:
+  majorVersion: 1
+  minorVersion: 35
+tests:
+  - it: renders a Deployment in the release namespace with recommended labels
+    asserts:
+      - isKind:
+          of: Deployment
+      - equal:
+          path: metadata.name
+          value: demo-ftw-app
+      - equal:
+          path: metadata.namespace
+          value: apps
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: ftw-app
+            app.kubernetes.io/instance: demo
+            app.kubernetes.io/version: "1.30.5-alpine"
+            app.kubernetes.io/part-of: demo
+            app.kubernetes.io/managed-by: Helm
+            helm.sh/chart: ftw-app-1.0.0
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: ftw-app
+            app.kubernetes.io/instance: demo
+      - notExists:
+          path: spec.template.metadata.labels["helm.sh/chart"]
+
+  - it: applies restricted security defaults
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext
+          value:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+      - equal:
+          path: spec.template.spec.containers[0].securityContext
+          value:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: demo-ftw-app
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: tmp
+            mountPath: /tmp
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: tmp
+            emptyDir:
+              sizeLimit: 64Mi
+
+  - it: pins the image by digest
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:daa17b944bac2b578e962da4c61ad72a59233b3c63abea17113acaf4e6b9aea4
+
+  - it: falls back to appVersion when tag and digest are empty
+    set:
+      image.tag: ""
+      image.digest: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: nginxinc/nginx-unprivileged:1.30.5
+
+  - it: sets requests and a memory limit without a CPU limit
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+
+  - it: defines startup, liveness and readiness probes on the named port
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.port
+          value: http
+      - exists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - exists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - equal:
+          path: spec.template.spec.containers[0].ports[0]
+          value:
+            name: http
+            containerPort: 8080
+            protocol: TCP
+
+  - it: disables a probe set to null
+    set:
+      startupProbe: null
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe
+
+  - it: adds a config checksum that changes with the config data
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["checksum/config"]
+          value: f3bf8d6461d0e3caeb4f3b95d3421143601603fa53d7ec9f4634d2a6722b32f2
+  - it: changes the checksum when config changes (rolls the pods)
+    set:
+      config.data.LOG_LEVEL: debug
+    asserts:
+      - notEqual:
+          path: spec.template.metadata.annotations["checksum/config"]
+          value: f3bf8d6461d0e3caeb4f3b95d3421143601603fa53d7ec9f4634d2a6722b32f2
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/config"]
+          pattern: ^[a-f0-9]{64}$
+
+  - it: omits config envFrom, mount and checksum when config is disabled
+    set:
+      config.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].envFrom
+      - notExists:
+          path: spec.template.metadata.annotations["checksum/config"]
+
+  - it: loads config as env and mounts it as files
+    set:
+      config.mountPath: /etc/app
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            configMapRef:
+              name: demo-ftw-app
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config
+            mountPath: /etc/app
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: config
+            configMap:
+              name: demo-ftw-app
+
+  - it: renders env map, extraEnv and extraEnvFrom
+    set:
+      env:
+        WORKERS: 4
+      extraEnv:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+      extraEnvFrom:
+        - secretRef:
+            name: app-secrets
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: WORKERS
+            value: "4"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: app-secrets
+
+  - it: uses Recreate without rollingUpdate
+    set:
+      strategy.type: Recreate
+    asserts:
+      - equal:
+          path: spec.strategy
+          value:
+            type: Recreate
+
+  - it: removes the tmp volume when disabled and supports a memory-backed one
+    set:
+      tmpVolume.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.volumes
+      - notExists:
+          path: spec.template.spec.containers[0].volumeMounts
+  - it: renders a memory-backed tmp volume
+    set:
+      tmpVolume.medium: Memory
+      tmpVolume.sizeLimit: ""
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: tmp
+            emptyDir:
+              medium: Memory
+
+  - it: passes scheduling, pull secrets, extra volumes and labels through
+    set:
+      replicaCount: 4
+      component: api
+      partOf: shop
+      commonLabels:
+        team: payments
+      podLabels:
+        tier: backend
+      podAnnotations:
+        example.com/a: "1"
+      imagePullSecrets: [regcred]
+      priorityClassName: high
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+        - key: dedicated
+          operator: Exists
+      extraVolumes:
+        - name: certs
+          secret:
+            secretName: certs
+      extraVolumeMounts:
+        - name: certs
+          mountPath: /etc/certs
+      lifecycle:
+        preStop:
+          exec:
+            command: [sleep, "5"]
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 4
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/component: api
+            app.kubernetes.io/part-of: shop
+            team: payments
+            tier: backend
+      - equal:
+          path: spec.template.metadata.annotations["example.com/a"]
+          value: "1"
+      - equal:
+          path: spec.template.spec.imagePullSecrets
+          value:
+            - name: regcred
+      - equal:
+          path: spec.template.spec.priorityClassName
+          value: high
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value:
+            kubernetes.io/os: linux
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: certs
+            secret:
+              secretName: certs
+      - exists:
+          path: spec.template.spec.containers[0].lifecycle.preStop
+      - equal:
+          path: spec.selector.matchLabels
+          value:
+            app.kubernetes.io/name: ftw-app
+            app.kubernetes.io/instance: demo
+
+  - it: uses the default ServiceAccount name when not creating one
+    set:
+      serviceAccount.create: false
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: default
+
+  - it: honours fullnameOverride
+    set:
+      fullnameOverride: payments-api
+    asserts:
+      - equal:
+          path: metadata.name
+          value: payments-api

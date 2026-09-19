@@ -1,0 +1,3 @@
+# expect: /image/tag
+image:
+  tag: latest

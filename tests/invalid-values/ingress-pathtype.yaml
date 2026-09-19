@@ -1,0 +1,8 @@
+# expect: pathType
+ingress:
+  enabled: true
+  hosts:
+    - host: app.example.com
+      paths:
+        - path: /
+          pathType: Wildcard

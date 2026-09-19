@@ -1,0 +1,3 @@
+# expect: /service/type
+service:
+  type: ExternalName

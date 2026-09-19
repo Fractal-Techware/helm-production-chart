@@ -1,0 +1,93 @@
+# Every optional feature enabled: used by helm lint, kubeconform and the policy check.
+partOf: shop
+component: api
+commonLabels:
+  team: payments
+commonAnnotations:
+  owner: payments@example.com
+imagePullSecrets: [regcred]
+replicaCount: 3
+command: ["nginx"]
+args: ["-g", "daemon off;"]
+env:
+  FEATURE_FLAGS: "checkout-v2"
+  WORKERS: 4
+extraEnv:
+  - name: POD_NAME
+    valueFrom:
+      fieldRef:
+        fieldPath: metadata.name
+extraEnvFrom:
+  - secretRef:
+      name: app-secrets
+      optional: true
+config:
+  data:
+    LOG_LEVEL: debug
+    index.html: "<h1>hello</h1>"
+  mountPath: /etc/app
+service:
+  annotations:
+    service.beta.kubernetes.io/description: api
+serviceAccount:
+  name: api-sa
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/api
+tmpVolume:
+  medium: Memory
+  sizeLimit: 32Mi
+lifecycle:
+  preStop:
+    exec:
+      command: ["sleep", "5"]
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /healthz
+          pathType: Exact
+  tls:
+    - secretName: api-tls
+      hosts: [api.example.com]
+podLabels:
+  sidecar.istio.io/inject: "false"
+podAnnotations:
+  prometheus.io/scrape: "true"
+priorityClassName: high
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: api
+    effect: NoSchedule
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          topologyKey: kubernetes.io/hostname
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: ftw-app
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: ftw-app
+extraVolumes:
+  - name: certs
+    secret:
+      secretName: api-certs
+extraVolumeMounts:
+  - name: certs
+    mountPath: /etc/certs
+    readOnly: true

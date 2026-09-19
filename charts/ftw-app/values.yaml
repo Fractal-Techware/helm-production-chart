@@ -1,0 +1,166 @@
+# ftw-app: production defaults for a stateless HTTP service.
+# Every key is validated by values.schema.json: a typo or wrong type fails `helm install`,
+# `helm upgrade` and `helm template` before anything reaches the cluster.
+
+# -- Override the chart name used in resource names and app.kubernetes.io/name.
+nameOverride: ""
+# -- Override the full resource name (default: <release>-<chart>, or <release> if it already contains the chart name).
+fullnameOverride: ""
+# -- app.kubernetes.io/part-of label: the larger system this service belongs to (default: release name).
+partOf: ""
+# -- app.kubernetes.io/component label, e.g. "api" or "frontend" (omitted when empty).
+component: ""
+# -- Extra labels added to every resource and pod.
+commonLabels: {}
+# -- Extra annotations added to every resource's metadata.
+commonAnnotations: {}
+
+image:
+  # -- Image repository. Docker Hub images can be written without a registry.
+  repository: nginxinc/nginx-unprivileged
+  # -- Image tag (default: chart appVersion). ':latest' is rejected by the schema.
+  tag: "1.30.5-alpine"
+  # -- Optional digest (sha256:...). When set the image is pinned: repository:tag@digest.
+  digest: "sha256:daa17b944bac2b578e962da4c61ad72a59233b3c63abea17113acaf4e6b9aea4"
+  pullPolicy: IfNotPresent
+
+# -- Names of image pull Secrets in the release namespace, e.g. [regcred].
+imagePullSecrets: []
+
+# -- Replicas. Two or more keeps the service available during node drains and rollouts.
+replicaCount: 2
+revisionHistoryLimit: 5
+strategy:
+  # -- RollingUpdate or Recreate.
+  type: RollingUpdate
+  # -- Used only with RollingUpdate. maxUnavailable 0 = never drop below the desired replicas.
+  maxSurge: 25%
+  maxUnavailable: 0
+
+# -- Override the image entrypoint / arguments.
+command: []
+args: []
+
+# -- Port the container listens on (named "http").
+containerPort: 8080
+
+# -- Plain, non-secret environment variables as NAME: value.
+env: {}
+# -- Raw Kubernetes EnvVar entries (valueFrom, secretKeyRef, fieldRef...).
+extraEnv: []
+# -- Raw envFrom entries, e.g. an existing Secret: [{secretRef: {name: my-secret}}].
+extraEnvFrom: []
+
+config:
+  # -- Render a ConfigMap from `data`. Its content hash is a pod annotation, so a config change rolls the pods.
+  enabled: true
+  data:
+    LOG_LEVEL: info
+  # -- Expose every key as an environment variable.
+  envFrom: true
+  # -- Also mount the keys as files at this path (empty = no mount).
+  mountPath: ""
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+serviceAccount:
+  # -- Create a dedicated ServiceAccount (recommended: no shared default account).
+  create: true
+  # -- Name to create or use (default: full name when create=true, "default" otherwise).
+  name: ""
+  annotations: {}
+  # -- Mount an API token into the pod. Off unless the app talks to the Kubernetes API.
+  automountServiceAccountToken: false
+
+# -- Pod-level security context: non-root, fixed UID/GID, RuntimeDefault seccomp.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Container-level security context (Pod Security Standards "restricted" compliant).
+securityContext:
+  allowPrivilegeEscalation: false
+  privileged: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Writable emptyDir for /tmp, required by most apps once the root filesystem is read-only.
+tmpVolume:
+  enabled: true
+  mountPath: /tmp
+  sizeLimit: 64Mi
+  # -- "" (node disk) or "Memory" (tmpfs, counts against the memory limit).
+  medium: ""
+
+# -- Probes are standard Kubernetes probe objects. Set one to null to disable it (--set startupProbe=null).
+startupProbe:
+  httpGet:
+    path: /
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 30
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+# -- Requests for CPU and memory, a memory limit, no CPU limit (avoids throttling latency spikes).
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+# -- Container lifecycle hooks, e.g. {preStop: {exec: {command: ["sleep", "5"]}}}.
+lifecycle: {}
+terminationGracePeriodSeconds: 30
+
+ingress:
+  enabled: false
+  # -- IngressClass name, e.g. "nginx" or "traefik" (empty = cluster default class).
+  className: ""
+  annotations: {}
+  hosts:
+    - host: app.example.com
+      paths:
+        - path: /
+          # -- Prefix, Exact or ImplementationSpecific.
+          pathType: Prefix
+  # -- [{secretName: app-tls, hosts: [app.example.com]}]
+  tls: []
+
+podLabels: {}
+podAnnotations: {}
+priorityClassName: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+topologySpreadConstraints: []
+
+# -- Additional volumes and mounts, e.g. a Secret mounted as files.
+extraVolumes: []
+extraVolumeMounts: []

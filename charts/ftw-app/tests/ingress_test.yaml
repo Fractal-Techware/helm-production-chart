@@ -1,0 +1,51 @@
+suite: ftw-app ingress
+templates:
+  - templates/ingress.yaml
+release:
+  name: demo
+  namespace: apps
+capabilities:
+  majorVersion: 1
+  minorVersion: 35
+tests:
+  - it: is disabled by default
+    asserts:
+      - hasDocuments:
+          count: 0
+  - it: renders networking.k8s.io/v1 with ingressClassName, TLS and the Service backend
+    set:
+      ingress.enabled: true
+      ingress.className: nginx
+      ingress.hosts:
+        - host: api.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+      ingress.tls:
+        - secretName: api-tls
+          hosts: [api.example.com]
+    asserts:
+      - isAPIVersion:
+          of: networking.k8s.io/v1
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.tls[0].secretName
+          value: api-tls
+      - equal:
+          path: spec.rules[0].http.paths[0]
+          value:
+            path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: demo-ftw-app
+                port:
+                  name: http
+  - it: omits ingressClassName when empty
+    set:
+      ingress.enabled: true
+    asserts:
+      - notExists:
+          path: spec.ingressClassName

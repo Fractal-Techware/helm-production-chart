@@ -1,0 +1,2 @@
+# expect: additional properties 'replicas' not allowed
+replicas: 3

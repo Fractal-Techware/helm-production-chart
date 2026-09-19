@@ -1,0 +1,4 @@
+PUBLISHING.md
+.rendered/
+.DS_Store
+*.tgz

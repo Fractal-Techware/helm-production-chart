@@ -1,0 +1,62 @@
+suite: ftw-app values schema
+templates:
+  - templates/deployment.yaml
+release:
+  name: demo
+  namespace: apps
+capabilities:
+  majorVersion: 1
+  minorVersion: 35
+tests:
+  - it: rejects the latest tag
+    set:
+      image.tag: latest
+    asserts:
+      - failedTemplate:
+          errorPattern: /image/tag
+  - it: rejects a malformed digest
+    set:
+      image.digest: sha256:abc
+    asserts:
+      - failedTemplate:
+          errorPattern: /image/digest
+  - it: rejects unknown keys (typos)
+    set:
+      replicas: 3
+    asserts:
+      - failedTemplate:
+          errorPattern: "additional properties 'replicas' not allowed"
+  - it: rejects wrong types
+    set:
+      replicaCount: "three"
+    asserts:
+      - failedTemplate:
+          errorPattern: /replicaCount
+  - it: rejects an invalid service type
+    set:
+      service.type: ExternalName
+    asserts:
+      - failedTemplate:
+          errorPattern: /service/type
+  - it: rejects an invalid pathType
+    set:
+      ingress.hosts:
+        - host: a.example.com
+          paths:
+            - path: /
+              pathType: Wildcard
+    asserts:
+      - failedTemplate:
+          errorPattern: pathType
+  - it: rejects resources without a memory request
+    set:
+      resources.requests.memory: null
+    asserts:
+      - failedTemplate:
+          errorPattern: memory
+  - it: rejects an invalid tmp volume medium
+    set:
+      tmpVolume.medium: HugePages
+    asserts:
+      - failedTemplate:
+          errorPattern: /tmpVolume/medium

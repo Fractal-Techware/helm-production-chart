@@ -1,0 +1,45 @@
+suite: ftw-app service
+templates:
+  - templates/service.yaml
+release:
+  name: demo
+  namespace: apps
+capabilities:
+  majorVersion: 1
+  minorVersion: 35
+tests:
+  - it: renders a ClusterIP Service on port 80 targeting the named port
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports
+          value:
+            - name: http
+              port: 80
+              targetPort: http
+              protocol: TCP
+      - equal:
+          path: spec.selector
+          value:
+            app.kubernetes.io/name: ftw-app
+            app.kubernetes.io/instance: demo
+  - it: merges service and common annotations
+    set:
+      service.annotations:
+        a: "1"
+      commonAnnotations:
+        b: "2"
+      service.port: 8080
+    asserts:
+      - equal:
+          path: metadata.annotations
+          value:
+            a: "1"
+            b: "2"
+      - equal:
+          path: spec.ports[0].port
+          value: 8080

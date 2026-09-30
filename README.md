@@ -24,7 +24,7 @@ ConfigMap and optional Ingress for a stateless HTTP service, with the boring dec
 
 Tested on Helm 4.0.5 and `kubeconform -strict` against the Kubernetes 1.32, 1.35 and 1.37 schemas.
 
-By [Fractal Techware](https://fractaltechware.gumroad.com/?utm_source=github&utm_medium=readme&utm_campaign=free-repo). MIT licensed.
+By [Fractal Techware](https://store.fractaltechware.com/?utm_source=github&utm_medium=readme&utm_campaign=free-repo). MIT licensed.
 
 ## What's included
 
@@ -103,7 +103,7 @@ run-tests.sh           lint + template + schema tests + unit tests + kubeconform
 ## Want the full kit?
 
 This chart is the free, MIT-licensed sample of the
-**[Production Helm Chart Kit](https://fractaltechware.gumroad.com/l/helm-production-chart?utm_source=github&utm_medium=readme&utm_campaign=free-repo)**
+**[Production Helm Chart Kit](https://store.fractaltechware.com/l/helm-production-chart?utm_source=github&utm_medium=readme&utm_campaign=free-repo)**
 — the same chart, plus the library chart and the release machinery that goes around it.
 
 | | **Free** (this repo) | **Starter** $19 | **Pro** $49 | **Studio** $99 |
@@ -118,7 +118,7 @@ This chart is the free, MIT-licensed sample of the
 | Argo CD + Flux examples, dev/staging/prod values, OpenTelemetry injection | – | – | – | yes |
 | License | MIT | own organization | own organization | client / agency use |
 
-[See the full kit on Gumroad →](https://fractaltechware.gumroad.com/l/helm-production-chart?utm_source=github&utm_medium=readme&utm_campaign=free-repo)
+[See the full kit on Gumroad →](https://store.fractaltechware.com/l/helm-production-chart?utm_source=github&utm_medium=readme&utm_campaign=free-repo)
 · More free, tested infrastructure repos at [github.com/Fractal-Techware](https://github.com/Fractal-Techware)
 
 ## Contributing
